@@ -47,7 +47,7 @@ def graficar_fourier(a, b, fx, an, bn):
 def main(page: ft.Page):
     page.title = "Calculadora"
     page.window.width = 600
-    page.window.height = 900
+    page.window.height = 950
 
     # Campos de entrada para a, b y f(x)
     input_a = ft.TextField(label="a", width=100)
@@ -57,9 +57,10 @@ def main(page: ft.Page):
     # Campo de texto para mostrar la expresión y el resultado
     display = ft.TextField(
         value="", 
-        text_align=ft.TextAlign.RIGHT, 
+        text_align=ft.TextAlign.LEFT, 
         width=600,
-        height=50, 
+        height=200, 
+        multiline=True,
         read_only=True,
         expand=True
     )
@@ -118,21 +119,50 @@ def main(page: ft.Page):
         if input_a.value and input_b.value and input_fx.value:
             try:
                 print(f"Input values - a: {input_a.value}, b: {input_b.value}, f(x): {input_fx.value}")
-                a = float(input_a.value.strip())
-                b = float(input_b.value.strip())
+                
+                # Convert pi symbols to float value
+                a_value = input_a.value.strip().replace('π', str(np.pi)).replace('pi', str(np.pi))
+                b_value = input_b.value.strip().replace('π', str(np.pi)).replace('pi', str(np.pi))
+            
+
+                a = float(eval(a_value))
+                b = float(eval(b_value))
                 fx = input_fx.value.strip()
+
                 resultado = calcular_serie_fourier(a, b, fx)
-                print(f"Result: {resultado}")
-                display.value = resultado
+
+                # Format the display output to be more user-friendly
                 if "Error" not in resultado:
-                    # Extraer y evaluar los coeficientes an y bn
                     an_str = resultado.split(", an: ")[1].split(", bn: ")[0]
                     bn_str = resultado.split(", bn: ")[1]
-                    an = eval(an_str)
-                    bn = eval(bn_str)
+                    a0_str = resultado.split("a0: ")[1].split(",")[0]
+                    
+                    # Round values to 4 decimal places
+                    a0 = float(a0_str)
+                    an = [float(x) for x in eval(an_str)]
+                    bn = [float(x) for x in eval(bn_str)]
+                    
+                    formatted_result = f"""Coeficientes de la Serie de Fourier:
+a₀ = {a0:.4f}
+
+Coeficientes aₙ:
+a₁ = {an[0]:.4f}
+a₂ = {an[1]:.4f}
+a₃ = {an[2]:.4f}
+a₄ = {an[3]:.4f}
+
+Coeficientes bₙ:
+b₁ = {bn[0]:.4f}
+b₂ = {bn[1]:.4f}
+b₃ = {bn[2]:.4f}
+b₄ = {bn[3]:.4f}"""
+
+                    display.value = formatted_result
                     base64_img = graficar_fourier(a, b, fx, an, bn)
                     grafica.src_base64 = base64_img
                     page.update()
+                else:
+                    display.value = resultado
             except ValueError as ve:
                 print(f"Conversion error: {ve}")
                 display.value = "Error: a y b deben ser números"
