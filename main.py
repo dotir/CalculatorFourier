@@ -1,8 +1,18 @@
+import os
+import io
+import base64
 import flet as ft
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from datetime import datetime
 from calculadora import evaluar_expresion, calcular_serie_fourier, piecewise
 
+# Create a folder for storing graphs if it doesn't exist
+if not os.path.exists("fourier_graphs"):
+    os.makedirs("fourier_graphs")
+    
 def graficar_fourier(a, b, fx, an, bn):
     x = np.linspace(a, b, 400)
     f = lambda x: eval(fx, {"x": x, "piecewise": piecewise, "sin": np.sin, "cos": np.cos, "pi": np.pi})
@@ -23,11 +33,19 @@ def graficar_fourier(a, b, fx, an, bn):
     plt.xlabel('x')
     plt.ylabel('f(x)')
     plt.grid(True)
-    plt.savefig('fourier_plot.png')
+
+    # Save to bytes buffer and convert to base64
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
     plt.close()
+    buf.seek(0)
+    img_base64 = base64.b64encode(buf.getvalue()).decode()
+    
+    return img_base64
+
 
 def main(page: ft.Page):
-    page.title = "Calculadora Científica"
+    page.title = "Calculadora"
     page.window.width = 600
     page.window.height = 900
 
@@ -52,27 +70,48 @@ def main(page: ft.Page):
         padding=10
     )
 
+    # Create initial empty plot and convert to base64
+    plt.figure(figsize=(10, 5))
+    plt.grid(True)
+    plt.title('Fourier Series Plot')
+    plt.xlabel('x')
+    plt.ylabel('f(x)')
+    
+    # Convert initial plot to base64
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close()
+    buf.seek(0)
+    initial_base64 = base64.b64encode(buf.getvalue()).decode()
+
     # Imagen para mostrar la gráfica
-    grafica = ft.Image(src='fourier_plot.png', width=600, height=300)
+    grafica =  ft.Image(src_base64=initial_base64)
 
     # Variable para rastrear el campo activo
-    campo_activo = display
+    campo_activo = input_a
 
     # Función para manejar la entrada de los botones
     def agregar_texto(e):
-        campo_activo.value += e.control.data
-        page.update()
+        if campo_activo != display:
+            campo_activo.value += e.control.data
+            page.update()
 
     # Función para cambiar el campo activo
     def set_campo_activo(campo):
         nonlocal campo_activo
         campo_activo = campo
+        # Update focus state
+        input_a.focused = (campo == input_a)
+        input_b.focused = (campo == input_b)
+        input_fx.focused = (campo == input_fx)
+        display.focused = (campo == display)
+        page.update()
 
     # Asignar eventos de clic para cambiar el campo activo
-    input_a.on_click = lambda e: set_campo_activo(input_a)
-    input_b.on_click = lambda e: set_campo_activo(input_b)
-    input_fx.on_click = lambda e: set_campo_activo(input_fx)
-    display.on_click = lambda e: set_campo_activo(display)
+    input_a.on_focus = lambda e: set_campo_activo(input_a)
+    input_b.on_focus = lambda e: set_campo_activo(input_b)
+    input_fx.on_focus = lambda e: set_campo_activo(input_fx)
+    display.on_focus = lambda e: set_campo_activo(display)
 
     def calcular(e):
         # Verifica si los campos a, b y f(x) están llenos para calcular Fourier
@@ -91,16 +130,37 @@ def main(page: ft.Page):
                     bn_str = resultado.split(", bn: ")[1]
                     an = eval(an_str)
                     bn = eval(bn_str)
-                    graficar_fourier(a, b, fx, an, bn)
-                    grafica.src = 'fourier_plot.png'
+                    base64_img = graficar_fourier(a, b, fx, an, bn)
+                    grafica.src_base64 = base64_img
+                    page.update()
             except ValueError as ve:
                 print(f"Conversion error: {ve}")
                 display.value = "Error: a y b deben ser números"
         page.update()
 
-    def borrar(e):
-        campo_activo.value = campo_activo.value[:-1]
+    def clear_inputs(e):
+        input_a.value = ""
+        input_b.value = ""
+        input_fx.value = ""
+        display.value = ""
+
+        #Create empty plot
+        plt.figure(figsize=(10, 5))
+        plt.grid(True)
+        plt.title('Fourier Series Plot')
+        plt.xlabel('x')
+        plt.ylabel('f(x)')
+        plt.savefig('fourier_plot.png')
+        plt.close()
+        
+        # Update the image source to the empty plot
+        grafica.src = 'fourier_plot.png'
         page.update()
+
+    def borrar(e):
+        if campo_activo != display:
+            campo_activo.value = campo_activo.value[:-1]
+            page.update()
 
     btn_numeros = ft.ElevatedButton("123", on_click=lambda e: mostrar_teclado_numerico(e))
     btn_funciones = ft.ElevatedButton("f(x)", on_click=lambda e: mostrar_teclado_funciones(e))
@@ -125,19 +185,19 @@ def main(page: ft.Page):
     botones_numeros = [
         ["7", "8", "9", "×", "÷"],
         ["4", "5", "6", "+", "-"],
-        ["1", "2", "3", "="],
+        ["1", "2", "3", "=","C"],
         ["0", ".", "←"],
     ]
 
     botones_funciones = [
-        ["sen", "cos", "tg", "e", "10^x"],
+        ["sen", "cos", "tg", "e", "C"],
         ["sen⁻¹", "cos⁻¹", "tg⁻¹", "<", ">"],
         ["sec", "cosec", "cotg", "≤", "≥"],
         ["ln", "log₁₀", "log₂", "√", "←"],
     ]
 
     botones_fourier = [
-        ["∫", "∑", "a₀", "aₙ", "bₙ"],
+        ["∫", "∑", "a₀", "aₙ", "bₙ","C"],
         ["∞", "π", "cos", "sen", "n"],
         ["dx", "L", "f(x)", "=", "←"]
     ]
@@ -155,19 +215,22 @@ def main(page: ft.Page):
     ]
 
     filas_numeros = [
-        ft.Row([ft.ElevatedButton(text, data=text, on_click=calcular if text == "=" else borrar if text == "←" else agregar_texto)
+        ft.Row([ft.ElevatedButton(text, data=text, 
+                on_click=calcular if text == "=" else borrar if text == "←" else clear_inputs if text == "C" else agregar_texto)
                 for text in fila], alignment=ft.MainAxisAlignment.CENTER)
         for fila in botones_numeros
     ]
 
     filas_funciones = [
-        ft.Row([ft.ElevatedButton(text, data=text, on_click=borrar if text == "←" else agregar_texto)
+        ft.Row([ft.ElevatedButton(text, data=text, 
+                on_click=borrar if text == "←" else clear_inputs if text == "C" else agregar_texto)
                 for text in fila], alignment=ft.MainAxisAlignment.CENTER)
         for fila in botones_funciones
     ]
 
     filas_fourier = [
-        ft.Row([ft.ElevatedButton(text, data=text, on_click=borrar if text == "←" else agregar_texto)
+        ft.Row([ft.ElevatedButton(text, data=text, 
+                on_click=calcular if text == "=" else borrar if text == "←" else clear_inputs if text == "C" else agregar_texto)
                 for text in fila], alignment=ft.MainAxisAlignment.CENTER)
         for fila in botones_fourier
     ]
