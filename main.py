@@ -7,6 +7,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from datetime import datetime
+from fractions import Fraction
 from calculadora import evaluar_expresion, calcular_serie_fourier, piecewise
 
 # Create a folder for storing graphs if it doesn't exist
@@ -15,7 +16,7 @@ if not os.path.exists("fourier_graphs"):
     
 def graficar_fourier(a, b, fx, an, bn):
     x = np.linspace(a, b, 400)
-    f = lambda x: eval(fx, {"x": x, "piecewise": piecewise, "sin": np.sin, "cos": np.cos, "pi": np.pi})
+    f = lambda x: np.full_like(x, eval(fx, {"x": x, "piecewise": piecewise, "sin": np.sin, "cos": np.cos, "pi": np.pi}))
     y_original = f(x)
 
     # Calcular la serie de Fourier
@@ -114,6 +115,13 @@ def main(page: ft.Page):
     input_fx.on_focus = lambda e: set_campo_activo(input_fx)
     display.on_focus = lambda e: set_campo_activo(display)
 
+    def decimal_to_fraction_str(decimal):
+        # Convert float to fraction and return a nice string representation
+        fraction = Fraction(decimal).limit_denominator(100)
+        if fraction.denominator == 1:
+            return f"{fraction.numerator}"
+        return f"{fraction.numerator}/{fraction.denominator}"
+
     def calcular(e):
         # Verifica si los campos a, b y f(x) están llenos para calcular Fourier
         if input_a.value and input_b.value and input_fx.value:
@@ -142,20 +150,41 @@ def main(page: ft.Page):
                     an = [float(x) for x in eval(an_str)]
                     bn = [float(x) for x in eval(bn_str)]
                     
-                    formatted_result = f"""Coeficientes de la Serie de Fourier:
-a₀ = {a0:.4f}
+                    L = (b - a) / 2
+                    # Build Fourier series expression
+                    series = f"f(x) = {a0:.4f}"
+                    
+                    for n in range(1, len(an)):
+                        if an[n-1] != 0:
+                            if an[n-1] > 0:
+                                series += f" + {abs(an[n-1]):.4f}cos({n}πx/{L:.4f})"
+                            else:
+                                series += f" - {abs(an[n-1]):.4f}cos({n}πx/{L:.4f})"
+                        
+                        if bn[n-1] != 0:
+                            if bn[n-1] > 0:
+                                series += f" + {abs(bn[n-1]):.4f}sin({n}πx/{L:.4f})"
+                            else:
+                                series += f" - {abs(bn[n-1]):.4f}sin({n}πx/{L:.4f})"
+
+
+                    formatted_result = f"""Serie de Fourier:
+{series}
+
+Coeficientes de la serie de Fourier:
+a₀ = {a0:.4f} = {decimal_to_fraction_str(a0)}
 
 Coeficientes aₙ:
-a₁ = {an[0]:.4f}
-a₂ = {an[1]:.4f}
-a₃ = {an[2]:.4f}
-a₄ = {an[3]:.4f}
+a₁ = {an[0]:.4f} = {decimal_to_fraction_str(an[0])}
+a₂ = {an[1]:.4f} = {decimal_to_fraction_str(an[1])}
+a₃ = {an[2]:.4f} = {decimal_to_fraction_str(an[2])}
+a₄ = {an[3]:.4f} = {decimal_to_fraction_str(an[3])}
 
 Coeficientes bₙ:
-b₁ = {bn[0]:.4f}
-b₂ = {bn[1]:.4f}
-b₃ = {bn[2]:.4f}
-b₄ = {bn[3]:.4f}"""
+b₁ = {bn[0]:.4f} = {decimal_to_fraction_str(bn[0])}
+b₂ = {bn[1]:.4f} = {decimal_to_fraction_str(bn[1])}
+b₃ = {bn[2]:.4f} = {decimal_to_fraction_str(bn[2])}
+b₄ = {bn[3]:.4f} = {decimal_to_fraction_str(bn[3])}"""
 
                     display.value = formatted_result
                     base64_img = graficar_fourier(a, b, fx, an, bn)
