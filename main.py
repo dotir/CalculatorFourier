@@ -51,7 +51,7 @@ def main(page: ft.Page):
     # Configuración inicial de la ventana
     page.title = "Calculadora"
     page.window.width = 600
-    page.window.height = 950
+    page.window.height = 990
 
     # Mensaje de ayuda para el campo f(x)
     ayuda_fx = ft.Text(
@@ -88,7 +88,7 @@ def main(page: ft.Page):
     # Create initial empty plot and convert to base64
     plt.figure(figsize=(10, 5))
     plt.grid(True)
-    plt.title('Fourier Series Plot')
+    plt.title('Gráfico de la Serie de Fourier')
     plt.xlabel('x')
     plt.ylabel('f(x)')
     
@@ -139,7 +139,7 @@ def main(page: ft.Page):
         # Verifica si los campos a, b y f(x) están llenos para calcular Fourier
         if input_a.value and input_b.value and input_fx.value:
             try:
-                print(f"Input values - a: {input_a.value}, b: {input_b.value}, f(x): {input_fx.value}")
+                #print(f"Input values - a: {input_a.value}, b: {input_b.value}, f(x): {input_fx.value}")
                 
                 # Convertir símbolos de pi a valor flotante
                 a_value = input_a.value.strip().replace('π', str(np.pi)).replace('pi', str(np.pi))

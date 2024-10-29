@@ -9,7 +9,7 @@ def convertir_expresion(expresion):
     # Expresión regular para detectar sin^2(2x), cos^2(2x), tan^2(2x)
     # La expresión regular fue ajustada para evitar duplicación del número
     expresion = re.sub(r'(\b(sin|cos|tan))\^(\d+)\((\d*)x\)', r'(\1(\4 * x))**\3', expresion)
-    print(expresion)
+    #print(expresion)
     return expresion
     
 # Función para evaluar si una función es par, impar o sin simetría
@@ -60,7 +60,7 @@ def calcular_serie_fourier(a, b, fx):
 
         # Evaluar simetría de la función
         simetria = evaluar_simetria(f, L)
-        print(f"Simetría detectada: {simetria}")
+        #print(f"Simetría detectada: {simetria}")
         # Inicializar coeficientes
         a0, an, bn = 0, [], []
         
