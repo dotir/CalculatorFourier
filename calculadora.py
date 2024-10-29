@@ -1,20 +1,16 @@
 import numpy as np
+import re
 from math import pi, e, sin, cos, tan, asin, acos, atan, log, log10, sqrt
 from scipy import integrate
 
-# Función para evaluar la expresión ingresada por el usuario
-def evaluar_expresion(expresion):
-    try:
-        if "∫" in expresion or "∑" in expresion:
-            return "Error: Fourier no implementado en esta función"
-        expresion = expresion.replace("π", str(pi)).replace("e", str(e))
-        expresion = expresion.replace("sen", "sin").replace("cos", "cos").replace("tg", "tan")
-        expresion = expresion.replace("sen⁻¹", "asin").replace("cos⁻¹", "acos").replace("tg⁻¹", "atan")
-        expresion = expresion.replace("log₁₀", "log10").replace("√", "sqrt").replace("ln", "log")
-        resultado = eval(expresion)
-        return str(resultado)
-    except Exception as ex:
-        return "Error"
+
+# Función para convertir expresiones en formato sin^n(x), cos^n(x), tan^n(x)
+def convertir_expresion(expresion):
+    # Expresión regular para detectar sin^2(2x), cos^2(2x), tan^2(2x)
+    # La expresión regular fue ajustada para evitar duplicación del número
+    expresion = re.sub(r'(\b(sin|cos|tan))\^(\d+)\((\d*)x\)', r'(\1(\4 * x))**\3', expresion)
+    print(expresion)
+    return expresion
     
 # Función para evaluar si una función es par, impar o sin simetría
 def evaluar_simetria(f, L, num_puntos=100):
@@ -54,10 +50,6 @@ def piecewise(*args):
         result = np.where(condition, value, result)
     
     return result
-    # result = np.full_like(conditions[0], default)  # Crear un array lleno con el valor predeterminado
-    # for value, condition in zip(values, conditions):
-    #     result = np.where(condition, value, result)
-    # return result
 
 # Función para calcular la serie de Fourier
 def calcular_serie_fourier(a, b, fx):

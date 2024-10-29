@@ -2,3 +2,4 @@ flet
 numpy
 matplotlib
 scipy
+sympy

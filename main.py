@@ -8,14 +8,16 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from datetime import datetime
 from fractions import Fraction
-from calculadora import evaluar_expresion, calcular_serie_fourier, piecewise
+from calculadora import convertir_expresion, calcular_serie_fourier, piecewise
 
-# Create a folder for storing graphs if it doesn't exist
+# Crear una carpeta para almacenar gráficos si no existe
 if not os.path.exists("fourier_graphs"):
     os.makedirs("fourier_graphs")
     
 def graficar_fourier(a, b, fx, an, bn):
+    # Generar valores de x
     x = np.linspace(a, b, 400)
+    # Evaluar la función original
     f = lambda x: np.full_like(x, eval(fx, {"x": x, "piecewise": piecewise, "sin": np.sin, "cos": np.cos, "pi": np.pi}))
     y_original = f(x)
 
@@ -35,7 +37,7 @@ def graficar_fourier(a, b, fx, an, bn):
     plt.ylabel('f(x)')
     plt.grid(True)
 
-    # Save to bytes buffer and convert to base64
+    # Guardar la gráfica en un buffer de bytes y convertirla a base64
     buf = io.BytesIO()
     plt.savefig(buf, format='png')
     plt.close()
@@ -46,14 +48,25 @@ def graficar_fourier(a, b, fx, an, bn):
 
 
 def main(page: ft.Page):
+    # Configuración inicial de la ventana
     page.title = "Calculadora"
     page.window.width = 600
     page.window.height = 950
 
+    # Mensaje de ayuda para el campo f(x)
+    ayuda_fx = ft.Text(
+        "Usa piecewise para funciones que tienen diferentes valores o expresiones en distintos intervalos de x. Escribe la función como piecewise(valor1, condición1, valor2, condición2, ..., valor_predeterminado)",
+        style=ft.TextStyle(color=ft.colors.GREY),
+        size=10
+    )
+
     # Campos de entrada para a, b y f(x)
     input_a = ft.TextField(label="a", width=100)
     input_b = ft.TextField(label="b", width=100)
-    input_fx = ft.TextField(label="f(x)", width=200)
+    input_fx = ft.TextField(label="f(x)", width=200, tooltip="Escribe tu función aquí")
+
+    # Contenedor para el campo f(x) con su mensaje de ayuda
+    fx_container = ft.Column([input_fx, ayuda_fx])
 
     # Campo de texto para mostrar la expresión y el resultado
     display = ft.TextField(
@@ -128,30 +141,30 @@ def main(page: ft.Page):
             try:
                 print(f"Input values - a: {input_a.value}, b: {input_b.value}, f(x): {input_fx.value}")
                 
-                # Convert pi symbols to float value
+                # Convertir símbolos de pi a valor flotante
                 a_value = input_a.value.strip().replace('π', str(np.pi)).replace('pi', str(np.pi))
                 b_value = input_b.value.strip().replace('π', str(np.pi)).replace('pi', str(np.pi))
             
 
                 a = float(eval(a_value))
                 b = float(eval(b_value))
-                fx = input_fx.value.strip()
+                fx = convertir_expresion(input_fx.value.strip())
 
                 resultado = calcular_serie_fourier(a, b, fx)
 
-                # Format the display output to be more user-friendly
+                # Formatear la salida para que sea más amigable para el usuario
                 if "Error" not in resultado:
                     an_str = resultado.split(", an: ")[1].split(", bn: ")[0]
                     bn_str = resultado.split(", bn: ")[1]
                     a0_str = resultado.split("a0: ")[1].split(",")[0]
                     
-                    # Round values to 4 decimal places
+                    # Redondear valores a 4 decimales
                     a0 = float(a0_str)
                     an = [float(x) for x in eval(an_str)]
                     bn = [float(x) for x in eval(bn_str)]
                     
                     L = (b - a) / 2
-                    # Build Fourier series expression
+                    # Construir la expresión de la serie de Fourier
                     series = f"f(x) = {a0:.4f}"
                     
                     for n in range(1, len(an)):
@@ -198,12 +211,13 @@ b₄ = {bn[3]:.4f} = {decimal_to_fraction_str(bn[3])}"""
         page.update()
 
     def clear_inputs(e):
+        # Limpiar los campos de entrada y la gráfica
         input_a.value = ""
         input_b.value = ""
         input_fx.value = ""
         display.value = ""
 
-        #Create empty plot
+        #Crear gráfica vacía
         plt.figure(figsize=(10, 5))
         plt.grid(True)
         plt.title('Fourier Series Plot')
@@ -212,21 +226,24 @@ b₄ = {bn[3]:.4f} = {decimal_to_fraction_str(bn[3])}"""
         plt.savefig('fourier_plot.png')
         plt.close()
         
-        # Update the image source to the empty plot
+        # Actualizar la imagen de la gráfica a la gráfica vacía
         grafica.src = 'fourier_plot.png'
         page.update()
 
     def borrar(e):
+        # Borrar el último carácter del campo activo
         if campo_activo != display:
             campo_activo.value = campo_activo.value[:-1]
             page.update()
 
+    # Botones para cambiar entre diferentes teclados
     btn_numeros = ft.ElevatedButton("123", on_click=lambda e: mostrar_teclado_numerico(e))
     btn_funciones = ft.ElevatedButton("f(x)", on_click=lambda e: mostrar_teclado_funciones(e))
     btn_letras = ft.ElevatedButton("ABC", on_click=lambda e: mostrar_teclado_letras(e))
     btn_simbolos = ft.ElevatedButton("#&¬", on_click=lambda e: mostrar_teclado_simbolos(e))
     btn_fourier = ft.ElevatedButton("Fourier", on_click=lambda e: mostrar_teclado_fourier(e))
 
+    # Definición de los teclados
     botones_letras = [
         ["A", "B", "C", "D", "E"],
         ["F", "G", "H", "I", "J"],
@@ -261,6 +278,7 @@ b₄ = {bn[3]:.4f} = {decimal_to_fraction_str(bn[3])}"""
         ["dx", "L", "f(x)", "=", "←"]
     ]
 
+    # Filas de botones para cada teclado
     filas_letras = [
         ft.Row([ft.ElevatedButton(text, data=text, on_click=borrar if text == "←" else agregar_texto)
                 for text in fila], alignment=ft.MainAxisAlignment.CENTER)
@@ -293,7 +311,7 @@ b₄ = {bn[3]:.4f} = {decimal_to_fraction_str(bn[3])}"""
                 for text in fila], alignment=ft.MainAxisAlignment.CENTER)
         for fila in botones_fourier
     ]
-
+    # Funciones para mostrar diferentes teclados
     def mostrar_teclado_letras(e):
         if len(page.controls) > 0:
             page.controls.pop()
@@ -359,7 +377,7 @@ b₄ = {bn[3]:.4f} = {decimal_to_fraction_str(bn[3])}"""
         if len(page.controls) > 0:
             page.controls.pop()
         page.add(ft.Column([
-            input_a, input_b, input_fx,  # Añadir campos de entrada para a, b y f(x)
+            input_a, input_b, fx_container,  # Añadir campos de entrada para a, b y f(x)
             display_container,
             grafica,
             ft.Row([btn_numeros, btn_funciones, btn_letras, btn_simbolos, btn_fourier], alignment=ft.MainAxisAlignment.CENTER),
