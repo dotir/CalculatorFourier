@@ -8,13 +8,13 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from datetime import datetime
 from fractions import Fraction
-from calculadora import convertir_expresion, calcular_serie_fourier, piecewise
+from calculadora import convertir_expresion, calcular_serie_fourier, piecewise,formatear_serie_fourier
 
 # Crear una carpeta para almacenar gráficos si no existe
 if not os.path.exists("fourier_graphs"):
     os.makedirs("fourier_graphs")
     
-def graficar_fourier(a, b, fx, an, bn):
+def graficar_fourier(a, b, fx, an, bn ,n_max):
     # Generar valores de x
     x = np.linspace(a, b, 400)
     # Evaluar la función original
@@ -24,8 +24,11 @@ def graficar_fourier(a, b, fx, an, bn):
     # Calcular la serie de Fourier
     L = (b - a) / 2
     y_fourier = np.full_like(x, an[0] / 2)
-    for n in range(1, len(an) + 1):
+    for n in range(1, n_max + 1):  # Use n_max to limit the number of terms
         y_fourier += an[n - 1] * np.cos(n * np.pi * x / L) + bn[n - 1] * np.sin(n * np.pi * x / L)
+
+    # for n in range(1, len(an) + 1):
+    #     y_fourier += an[n - 1] * np.cos(n * np.pi * x / L) + bn[n - 1] * np.sin(n * np.pi * x / L)
 
     # Graficar
     plt.figure(figsize=(10, 5))
@@ -85,6 +88,17 @@ def main(page: ft.Page):
         padding=10
     )
 
+    # Deslizador para seleccionar el número de términos de Fourier
+    slider_n = ft.Slider(
+        min=1,
+        max=20,  # Puedes ajustar el máximo según lo que necesites
+        value=5,  # Valor por defecto de n
+        divisions=19,
+        label="{value}",
+        on_change=lambda e: page.update(),
+        width=300
+    )
+
     # Create initial empty plot and convert to base64
     plt.figure(figsize=(10, 5))
     plt.grid(True)
@@ -139,7 +153,7 @@ def main(page: ft.Page):
         # Verifica si los campos a, b y f(x) están llenos para calcular Fourier
         if input_a.value and input_b.value and input_fx.value:
             try:
-                #print(f"Input values - a: {input_a.value}, b: {input_b.value}, f(x): {input_fx.value}")
+                print(f"Input values - a: {input_a.value}, b: {input_b.value}, f(x): {input_fx.value}")
                 
                 # Convertir símbolos de pi a valor flotante
                 a_value = input_a.value.strip().replace('π', str(np.pi)).replace('pi', str(np.pi))
@@ -150,7 +164,16 @@ def main(page: ft.Page):
                 b = float(eval(b_value))
                 fx = convertir_expresion(input_fx.value.strip())
 
-                resultado = calcular_serie_fourier(a, b, fx)
+                # Obtener el valor de n desde el deslizador
+                n_max = int(slider_n.value)
+
+                resultado = calcular_serie_fourier(a, b, fx, n_max)
+
+                # Extraer los valores de a0, an y bn desde el resultado
+                # a0, an, bn = resultado["a0"], resultado["an"], resultado["bn"]
+                
+                
+                print(f"Resultado: {resultado}")
 
                 # Formatear la salida para que sea más amigable para el usuario
                 if "Error" not in resultado:
@@ -160,14 +183,28 @@ def main(page: ft.Page):
                     
                     # Redondear valores a 4 decimales
                     a0 = float(a0_str)
-                    an = [float(x) for x in eval(an_str)]
-                    bn = [float(x) for x in eval(bn_str)]
-                    
+                    an = [float(x) for x in an_str.strip('[]').split(', ')]
+                    bn = [float(x) for x in bn_str.strip('[]').split(', ')]
+
+                    n_max = min(n_max, len(an), len(bn))
+
+                    # Calcular la Serie de Fourier en formato simplificado
                     L = (b - a) / 2
+                    resultado_simplificado = formatear_serie_fourier(a0, an, bn, L)
+
                     # Construir la expresión de la serie de Fourier
-                    series = f"f(x) = {a0:.4f}"
+                    # series = f"f(x) = {a0:.4f}"
+                    # Ajustar n_max para que no sea mayor que el número de términos calculados
+                   
                     
-                    for n in range(1, len(an)):
+                    series = f"f(x) = {a0 / 2:.4f}"
+                    # for n in range(1, n_max + 1):
+                    #     if an[n - 1] != 0:
+                    #         series += f" + {an[n-1]:.4f}cos({n}πx/{L:.4f})"
+                    #     if bn[n - 1] != 0:
+                    #         series += f" + {bn[n - 1]:.4f}sin({n}πx/{L:.4f})"
+
+                    for n in range(1, n_max + 1):
                         if an[n-1] != 0:
                             if an[n-1] > 0:
                                 series += f" + {abs(an[n-1]):.4f}cos({n}πx/{L:.4f})"
@@ -184,23 +221,20 @@ def main(page: ft.Page):
                     formatted_result = f"""Serie de Fourier:
 {series}
 
+Serie de Fourier simplificada:
+{resultado_simplificado}
+
 Coeficientes de la serie de Fourier:
 a₀ = {a0:.4f} = {decimal_to_fraction_str(a0)}
 
 Coeficientes aₙ:
-a₁ = {an[0]:.4f} = {decimal_to_fraction_str(an[0])}
-a₂ = {an[1]:.4f} = {decimal_to_fraction_str(an[1])}
-a₃ = {an[2]:.4f} = {decimal_to_fraction_str(an[2])}
-a₄ = {an[3]:.4f} = {decimal_to_fraction_str(an[3])}
+""" + "\n".join([f"aₙ = {an[n-1]:.4f} = {decimal_to_fraction_str(an[n-1])}" for n in range(1, n_max+1)]) + """
 
 Coeficientes bₙ:
-b₁ = {bn[0]:.4f} = {decimal_to_fraction_str(bn[0])}
-b₂ = {bn[1]:.4f} = {decimal_to_fraction_str(bn[1])}
-b₃ = {bn[2]:.4f} = {decimal_to_fraction_str(bn[2])}
-b₄ = {bn[3]:.4f} = {decimal_to_fraction_str(bn[3])}"""
+""" + "\n".join([f"bₙ = {bn[n-1]:.4f} = {decimal_to_fraction_str(bn[n-1])}" for n in range(1, n_max+1)])
 
                     display.value = formatted_result
-                    base64_img = graficar_fourier(a, b, fx, an, bn)
+                    base64_img = graficar_fourier(a, b, fx, an, bn, n_max)
                     grafica.src_base64 = base64_img
                     page.update()
                 else:
@@ -208,6 +242,9 @@ b₄ = {bn[3]:.4f} = {decimal_to_fraction_str(bn[3])}"""
             except ValueError as ve:
                 print(f"Conversion error: {ve}")
                 display.value = "Error: a y b deben ser números"
+            except Exception as ex:
+                print(f"Error en el cálculo de Fourier: {ex}")
+                display.value = "Error en el cálculo de Fourier"
         page.update()
 
     def clear_inputs(e):
@@ -317,6 +354,7 @@ b₄ = {bn[3]:.4f} = {decimal_to_fraction_str(bn[3])}"""
             page.controls.pop()
         page.add(ft.Column([
             input_a, input_b, input_fx,  # Añadir campos de entrada para a, b y f(x)
+            slider_n,
             display_container,
             grafica,
             ft.Row([btn_numeros, btn_funciones, btn_letras, btn_simbolos, btn_fourier], alignment=ft.MainAxisAlignment.CENTER),
@@ -329,6 +367,7 @@ b₄ = {bn[3]:.4f} = {decimal_to_fraction_str(bn[3])}"""
             page.controls.pop()
         page.add(ft.Column([
             input_a, input_b, input_fx,  # Añadir campos de entrada para a, b y f(x)
+            slider_n,
             display_container,
             grafica,
             ft.Row([btn_numeros, btn_funciones, btn_letras, btn_simbolos, btn_fourier], alignment=ft.MainAxisAlignment.CENTER),
@@ -341,6 +380,7 @@ b₄ = {bn[3]:.4f} = {decimal_to_fraction_str(bn[3])}"""
             page.controls.pop()
         page.add(ft.Column([
             input_a, input_b, input_fx,  # Añadir campos de entrada para a, b y f(x)
+            slider_n,
             display_container,
             grafica,
             ft.Row([btn_numeros, btn_funciones, btn_letras, btn_simbolos, btn_fourier], alignment=ft.MainAxisAlignment.CENTER),
@@ -353,6 +393,7 @@ b₄ = {bn[3]:.4f} = {decimal_to_fraction_str(bn[3])}"""
             page.controls.pop()
         page.add(ft.Column([
             input_a, input_b, input_fx,  # Añadir campos de entrada para a, b y f(x)
+            slider_n,
             display_container,
             grafica,
             ft.Row([btn_numeros, btn_funciones, btn_letras, btn_simbolos, btn_fourier], alignment=ft.MainAxisAlignment.CENTER),
@@ -365,6 +406,7 @@ b₄ = {bn[3]:.4f} = {decimal_to_fraction_str(bn[3])}"""
             page.controls.pop()
         page.add(ft.Column([
             input_a, input_b, input_fx,  # Añadir campos de entrada para a, b y f(x)
+            slider_n,
             display_container,
             grafica,
             ft.Row([btn_numeros, btn_funciones, btn_letras, btn_simbolos, btn_fourier], 
@@ -377,7 +419,8 @@ b₄ = {bn[3]:.4f} = {decimal_to_fraction_str(bn[3])}"""
         if len(page.controls) > 0:
             page.controls.pop()
         page.add(ft.Column([
-            input_a, input_b, fx_container,  # Añadir campos de entrada para a, b y f(x)
+            input_a, input_b, fx_container,
+            slider_n,
             display_container,
             grafica,
             ft.Row([btn_numeros, btn_funciones, btn_letras, btn_simbolos, btn_fourier], alignment=ft.MainAxisAlignment.CENTER),
